@@ -38,6 +38,7 @@ abstract interface class DownloadService {
   /// - [maxRetries]: Max retry attempts for transient errors (default: 10)
   ///   Note: Auth errors (401/403/404) fail after 1 attempt regardless of this value
   /// - [cancelToken]: Optional token for cancellation
+  /// - [updatesStream]: Optional stream to use instead of the default FileDownloader updates stream
   ///
   /// Throws:
   /// - [DownloadCancelledException] if cancelled via cancelToken
@@ -56,5 +57,6 @@ abstract interface class DownloadService {
     String? token,
     int maxRetries = 10,
     CancelToken? cancelToken,
+    Stream<dynamic>? updatesStream,
   });
 }

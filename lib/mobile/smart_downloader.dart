@@ -36,6 +36,7 @@ class SmartDownloader {
   /// [token] - Optional authorization token (e.g., HuggingFace, custom auth)
   /// [maxRetries] - Maximum number of retry attempts for transient errors (default: 10)
   /// [cancelToken] - Optional token for cancellation
+  /// [updatesStream] - Optional stream to use instead of the default FileDownloader updates stream
   /// Note: Auth errors (401/403/404) fail after 1 attempt, regardless of maxRetries.
   /// Only network errors and server errors (5xx) will be retried up to maxRetries times.
   ///
@@ -49,6 +50,7 @@ class SmartDownloader {
     String? token,
     int maxRetries = 10,
     CancelToken? cancelToken,
+    Stream<dynamic>? updatesStream,
   }) async {
     final completer = Completer<void>();
 
@@ -59,6 +61,7 @@ class SmartDownloader {
       token: token,
       maxRetries: maxRetries,
       cancelToken: cancelToken,
+      updatesStream: updatesStream,
     ).listen(
       (_) {}, // Ignore progress updates
       onError: (error) => completer.completeError(error),
@@ -76,6 +79,7 @@ class SmartDownloader {
   /// [token] - Optional authorization token (e.g., HuggingFace, custom auth)
   /// [maxRetries] - Maximum number of retry attempts for transient errors (default: 10)
   /// [cancelToken] - Optional token for cancellation
+  /// [updatesStream] - Optional stream to use instead of the default FileDownloader updates stream
   /// Note: Auth errors (401/403/404) fail after 1 attempt, regardless of maxRetries.
   /// Only network errors and server errors (5xx) will be retried up to maxRetries times.
   /// Returns a stream of progress percentages (0-100)
@@ -87,6 +91,7 @@ class SmartDownloader {
     String? token,
     int maxRetries = 10,
     CancelToken? cancelToken,
+    Stream<dynamic>? updatesStream,
   }) {
     final progress = StreamController<int>();
     StreamSubscription? currentListener;
@@ -95,15 +100,16 @@ class SmartDownloader {
 
     // Listen for cancellation
     if (cancelToken != null) {
-      cancellationListener = cancelToken.whenCancelled.asStream().listen((_) async {
+      cancellationListener =
+          cancelToken.whenCancelled.asStream().listen((_) async {
         debugPrint('🚫 Cancellation requested');
 
         // Cancel the actual download task
         if (currentTaskId != null) {
           debugPrint('🚫 Cancelling task: $currentTaskId');
           try {
-            await FileDownloader()
-                .cancelTaskWithId(currentTaskId!); // ← ADD: Actually cancel the task
+            await FileDownloader().cancelTaskWithId(
+                currentTaskId!); // ← ADD: Actually cancel the task
           } catch (e) {
             debugPrint('⚠️ Failed to cancel task: $e');
           }
@@ -132,6 +138,7 @@ class SmartDownloader {
       currentAttempt: 1,
       currentListener: currentListener,
       cancelToken: cancelToken,
+      updatesStream: updatesStream,
       onListenerCreated: (listener) {
         currentListener = listener;
       },
@@ -155,6 +162,7 @@ class SmartDownloader {
     required int currentAttempt,
     StreamSubscription? currentListener,
     CancelToken? cancelToken,
+    Stream<dynamic>? updatesStream,
     void Function(StreamSubscription)? onListenerCreated,
     void Function(String taskId)? onTaskCreated, // ← ADD: Callback for task ID
   }) async {
@@ -169,7 +177,8 @@ class SmartDownloader {
       return;
     }
 
-    debugPrint('🔵 _downloadWithSmartRetry called - attempt $currentAttempt/$maxRetries');
+    debugPrint(
+        '🔵 _downloadWithSmartRetry called - attempt $currentAttempt/$maxRetries');
     debugPrint('🔵 URL: $url');
     debugPrint('🔵 Target: $targetPath');
 
@@ -177,7 +186,8 @@ class SmartDownloader {
     StreamSubscription? listener;
 
     try {
-      final (baseDirectory, directory, filename) = await Task.split(filePath: targetPath);
+      final (baseDirectory, directory, filename) =
+          await Task.split(filePath: targetPath);
 
       final task = DownloadTask(
         url: url,
@@ -201,8 +211,10 @@ class SmartDownloader {
         requiresWiFi: false,
         allowPause: true, // Try resume first
         priority: 10,
-        retries: 0, // No automatic retries - we handle ALL retries with HTTP-aware logic
-        updates: Updates.statusAndProgress, // ✅ Get both status AND progress updates
+        retries:
+            0, // No automatic retries - we handle ALL retries with HTTP-aware logic
+        updates:
+            Updates.statusAndProgress, // ✅ Get both status AND progress updates
       );
 
       final downloader = FileDownloader();
@@ -212,10 +224,15 @@ class SmartDownloader {
 
       // Listen to broadcast stream to get full status info including HTTP code
       // Using broadcast stream allows multiple downloads and retries
-      listener = _getUpdatesStream().listen((update) async {
+      // Use provided updatesStream if available, otherwise use default
+      final streamToUse = updatesStream != null
+          ? updatesStream.cast<TaskUpdate>()
+          : _getUpdatesStream();
+      listener = streamToUse.listen((update) async {
         if (update.task.taskId != task.taskId) return;
 
-        debugPrint('📡 Received update for task ${task.taskId}: ${update.runtimeType}');
+        debugPrint(
+            '📡 Received update for task ${task.taskId}: ${update.runtimeType}');
 
         if (update is TaskProgressUpdate) {
           final percents = (update.progress * 100).round();
@@ -224,7 +241,8 @@ class SmartDownloader {
             progress.add(percents.clamp(0, 100));
           }
         } else if (update is TaskStatusUpdate) {
-          debugPrint('📡 TaskStatusUpdate: ${update.status}, HTTP: ${update.responseStatusCode}');
+          debugPrint(
+              '📡 TaskStatusUpdate: ${update.status}, HTTP: ${update.responseStatusCode}');
 
           switch (update.status) {
             case TaskStatus.complete:
@@ -238,7 +256,8 @@ class SmartDownloader {
 
             case TaskStatus.failed:
               debugPrint('🔴 SmartDownloader: TaskStatus.failed detected');
-              debugPrint('🔴 HTTP Status Code from update: ${update.responseStatusCode}');
+              debugPrint(
+                  '🔴 HTTP Status Code from update: ${update.responseStatusCode}');
               debugPrint('🔴 Exception: ${update.exception}');
               debugPrint('🔴 Progress closed: ${progress.isClosed}');
               debugPrint('🔴 Current attempt: $currentAttempt');
@@ -249,8 +268,10 @@ class SmartDownloader {
               // If not in responseStatusCode, check exception
               if (httpCode == null && update.exception != null) {
                 if (update.exception is TaskHttpException) {
-                  httpCode = (update.exception as TaskHttpException).httpResponseCode;
-                  debugPrint('🔴 HTTP Status Code from TaskHttpException: $httpCode');
+                  httpCode =
+                      (update.exception as TaskHttpException).httpResponseCode;
+                  debugPrint(
+                      '🔴 HTTP Status Code from TaskHttpException: $httpCode');
                 }
               }
 
@@ -266,6 +287,7 @@ class SmartDownloader {
                 httpStatusCode: httpCode,
                 currentListener: listener,
                 cancelToken: cancelToken,
+                updatesStream: updatesStream,
                 onListenerCreated: onListenerCreated,
                 onTaskCreated: onTaskCreated, // ← ADD: Pass callback through
               );
@@ -286,7 +308,8 @@ class SmartDownloader {
               break;
 
             case TaskStatus.notFound:
-              debugPrint('🔴 SmartDownloader: TaskStatus.notFound detected (404)');
+              debugPrint(
+                  '🔴 SmartDownloader: TaskStatus.notFound detected (404)');
 
               // 404 is a non-retryable error - handle immediately
               await _handleFailedDownload(
@@ -301,6 +324,7 @@ class SmartDownloader {
                 httpStatusCode: 404,
                 currentListener: listener,
                 cancelToken: cancelToken,
+                updatesStream: updatesStream,
                 onListenerCreated: onListenerCreated,
                 onTaskCreated: onTaskCreated, // ← ADD: Pass callback through
               );
@@ -339,8 +363,10 @@ class SmartDownloader {
       await listener?.cancel();
 
       if (currentAttempt < maxRetries) {
-        debugPrint('⚠️ Retrying after exception... attempt ${currentAttempt + 1}/$maxRetries');
-        await Future.delayed(Duration(seconds: currentAttempt * 2)); // Exponential backoff
+        debugPrint(
+            '⚠️ Retrying after exception... attempt ${currentAttempt + 1}/$maxRetries');
+        await Future.delayed(
+            Duration(seconds: currentAttempt * 2)); // Exponential backoff
 
         // Check cancellation before retry
         try {
@@ -362,6 +388,7 @@ class SmartDownloader {
           currentAttempt: currentAttempt + 1,
           currentListener: currentListener,
           cancelToken: cancelToken,
+          updatesStream: updatesStream,
           onListenerCreated: onListenerCreated,
           onTaskCreated: onTaskCreated, // ← ADD: Pass callback through
         );
@@ -393,6 +420,7 @@ class SmartDownloader {
     int? httpStatusCode,
     StreamSubscription? currentListener,
     CancelToken? cancelToken,
+    Stream<dynamic>? updatesStream,
     void Function(StreamSubscription)? onListenerCreated,
     void Function(String taskId)? onTaskCreated, // ← ADD: Callback for task ID
   }) async {
@@ -480,6 +508,7 @@ class SmartDownloader {
         currentAttempt: currentAttempt + 1,
         currentListener: currentListener,
         cancelToken: cancelToken,
+        updatesStream: updatesStream,
         onListenerCreated: onListenerCreated,
         onTaskCreated: onTaskCreated, // ← ADD: Pass callback through
       );

@@ -40,6 +40,7 @@ class WebAssetSourceHandler implements SourceHandler {
   Stream<int> installWithProgress(
     ModelSource source, {
     CancelToken? cancelToken,
+    Stream<dynamic>? updatesStream,
   }) {
     throw UnsupportedError(
       'WebAssetSourceHandler is only available on web platform',

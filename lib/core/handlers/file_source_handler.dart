@@ -76,6 +76,7 @@ class FileSourceHandler implements SourceHandler {
   Stream<int> installWithProgress(
     ModelSource source, {
     CancelToken? cancelToken,
+    Stream<dynamic>? updatesStream,
   }) async* {
     // Same as above - file registration is instant
     if (source is! FileSource) {

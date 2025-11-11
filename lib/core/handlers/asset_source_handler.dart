@@ -78,6 +78,7 @@ class AssetSourceHandler implements SourceHandler {
   Stream<int> installWithProgress(
     ModelSource source, {
     CancelToken? cancelToken,
+    Stream<dynamic>? updatesStream,
   }) async* {
     // Same as above - add parameter but don't use it
     // Asset copies are fast (<30s), cancellation not critical

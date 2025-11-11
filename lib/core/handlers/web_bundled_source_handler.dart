@@ -73,6 +73,7 @@ class WebBundledSourceHandler implements SourceHandler {
   Stream<int> installWithProgress(
     ModelSource source, {
     CancelToken? cancelToken,
+    Stream<dynamic>? updatesStream,
   }) async* {
     // Same as above - web bundled resources are instant
     if (source is! BundledSource) {

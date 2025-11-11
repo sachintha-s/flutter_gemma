@@ -67,6 +67,7 @@ class WebDownloadService implements DownloadService {
     String? token,
     int maxRetries = 10,
     CancelToken? cancelToken,
+    Stream<dynamic>? updatesStream,
   }) async* {
     // Check cancellation before starting
     cancelToken?.throwIfCancelled();

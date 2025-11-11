@@ -144,7 +144,7 @@ class InferenceInstallationBuilder {
   ///
   /// Note: This method is idempotent - calling install() on an already-installed
   /// model will skip download and just set it as active.
-  Future<InferenceInstallation> install() async {
+  Future<InferenceInstallation> install({Stream<dynamic>? updatesStream}) async {
     // Check cancellation before starting
     _cancelToken?.throwIfCancelled();
 
@@ -180,6 +180,7 @@ class InferenceInstallationBuilder {
         await for (final progress in handler!.installWithProgress(
           _modelSource!,
           cancelToken: _cancelToken,
+          updatesStream: updatesStream,
         )) {
           _onProgress!(progress);
         }

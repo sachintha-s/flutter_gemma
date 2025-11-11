@@ -49,6 +49,7 @@ abstract interface class SourceHandler {
   /// Parameters:
   /// - [source]: The model source to install from
   /// - [cancelToken]: Optional token for cancelling the installation
+  /// - [updatesStream]: Optional stream to use instead of the default FileDownloader updates stream
   ///
   /// Note: Some sources may not support true progress:
   /// - AssetSource: simulates progress (copy is instant)
@@ -78,6 +79,7 @@ abstract interface class SourceHandler {
   Stream<int> installWithProgress(
     ModelSource source, {
     CancelToken? cancelToken,
+    Stream<dynamic>? updatesStream,
   });
 
   /// Checks if this source supports resume after interruption

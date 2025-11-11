@@ -45,7 +45,8 @@ class NetworkSourceHandler implements SourceHandler {
     final targetPath = await fileSystem.getTargetPath(filename);
 
     // Get token: prefer from source, fallback to constructor
-    final token = source.authToken ?? (_isHuggingFaceUrl(source.url) ? huggingFaceToken : null);
+    final token = source.authToken ??
+        (_isHuggingFaceUrl(source.url) ? huggingFaceToken : null);
 
     // Download file with cancellation support
     await downloadService.download(
@@ -75,6 +76,7 @@ class NetworkSourceHandler implements SourceHandler {
   Stream<int> installWithProgress(
     ModelSource source, {
     CancelToken? cancelToken,
+    Stream<dynamic>? updatesStream,
   }) async* {
     if (source is! NetworkSource) {
       throw ArgumentError('NetworkSourceHandler only supports NetworkSource');
@@ -85,7 +87,8 @@ class NetworkSourceHandler implements SourceHandler {
     final targetPath = await fileSystem.getTargetPath(filename);
 
     // Get token: prefer from source, fallback to constructor
-    final token = source.authToken ?? (_isHuggingFaceUrl(source.url) ? huggingFaceToken : null);
+    final token = source.authToken ??
+        (_isHuggingFaceUrl(source.url) ? huggingFaceToken : null);
 
     // Download with progress tracking, configurable retries, and cancellation support
     await for (final progress in downloadService.downloadWithProgress(
@@ -94,6 +97,7 @@ class NetworkSourceHandler implements SourceHandler {
       token: token,
       maxRetries: maxDownloadRetries,
       cancelToken: cancelToken,
+      updatesStream: updatesStream,
     )) {
       yield progress;
     }

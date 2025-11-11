@@ -124,6 +124,7 @@ class WebAssetSourceHandler implements SourceHandler {
   Stream<int> installWithProgress(
     ModelSource source, {
     CancelToken? cancelToken,
+    Stream<dynamic>? updatesStream,
   }) async* {
     // Same as install() but with progress tracking
     if (source is! AssetSource) {

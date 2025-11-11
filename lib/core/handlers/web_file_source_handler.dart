@@ -77,6 +77,7 @@ class WebFileSourceHandler implements SourceHandler {
   Stream<int> installWithProgress(
     ModelSource source, {
     CancelToken? cancelToken,
+    Stream<dynamic>? updatesStream,
   }) async* {
     // Same as above - web file registration is instant
     if (source is! FileSource) {
