@@ -49,7 +49,8 @@ class WebNetworkSourceHandler implements SourceHandler {
     CancelToken? cancelToken,
   }) async {
     // Delegate to installWithProgress, ignore progress events
-    await for (final _ in installWithProgress(source, cancelToken: cancelToken)) {
+    await for (final _
+        in installWithProgress(source, cancelToken: cancelToken)) {
       // Ignore progress updates
     }
   }
@@ -58,9 +59,11 @@ class WebNetworkSourceHandler implements SourceHandler {
   Stream<int> installWithProgress(
     ModelSource source, {
     CancelToken? cancelToken,
+    Stream<dynamic>? updatesStream,
   }) async* {
     if (source is! NetworkSource) {
-      throw ArgumentError('WebNetworkSourceHandler only supports NetworkSource');
+      throw ArgumentError(
+          'WebNetworkSourceHandler only supports NetworkSource');
     }
 
     // Extract filename and validate
@@ -71,7 +74,8 @@ class WebNetworkSourceHandler implements SourceHandler {
     }
 
     // Get token: prefer from source, fallback to constructor
-    final token = source.authToken ?? (_isHuggingFaceUrl(source.url) ? huggingFaceToken : null);
+    final token = source.authToken ??
+        (_isHuggingFaceUrl(source.url) ? huggingFaceToken : null);
 
     try {
       // Download with progress tracking (uses unified caching helper internally)
@@ -116,7 +120,8 @@ class WebNetworkSourceHandler implements SourceHandler {
       debugPrint('[WebNetworkSourceHandler] ❌ Download failed: $errorMsg');
       rethrow;
     } catch (e) {
-      debugPrint('[WebNetworkSourceHandler] ❌ Failed to install network model: $e');
+      debugPrint(
+          '[WebNetworkSourceHandler] ❌ Failed to install network model: $e');
       rethrow;
     }
   }
