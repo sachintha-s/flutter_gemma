@@ -1051,6 +1051,22 @@ flutter_gemma/
 - Resume support for interrupted downloads
 - Progress tracking with background support
 
+### ✅ VectorStore with SQLite (v0.11.12)
+
+**Cross-Platform RAG Support:**
+- **Android/iOS**: Native SQLite with BLOB storage (float32)
+- **Web**: SQLite WASM (wa-sqlite + OPFS) - 10x faster than IndexedDB
+
+**Key Files:**
+- `lib/core/services/vector_store_repository.dart` - Interface
+- `lib/core/infrastructure/mobile_vector_store_repository.dart` - Mobile
+- `lib/core/infrastructure/web_vector_store_repository.dart` - Web
+- `web/rag/sqlite_vector_store.js` - SQLite WASM implementation
+
+**Testing:**
+- 10 E2E integration tests (pass on iOS, Android, Chrome)
+- 14 parity tests for BLOB encoding and cosine similarity
+
 ---
 
 ## Future Improvements
