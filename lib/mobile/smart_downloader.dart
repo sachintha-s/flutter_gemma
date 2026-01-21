@@ -275,7 +275,7 @@ class SmartDownloader {
                 }
               }
 
-              await _handleFailedDownload(
+              final resumePending = await _handleFailedDownload(
                 task: task,
                 downloader: downloader,
                 url: url,
@@ -289,10 +289,17 @@ class SmartDownloader {
                 cancelToken: cancelToken,
                 updatesStream: updatesStream,
                 onListenerCreated: onListenerCreated,
-                onTaskCreated: onTaskCreated, // ← ADD: Pass callback through
+                onTaskCreated: onTaskCreated,
               );
-              await listener?.cancel();
-              completer.complete(); // ✅ Signal completion (even on failure)
+
+              // Only cleanup if no resume is pending
+              // If resume was triggered, we need to keep listening for the result
+              if (!resumePending) {
+                await listener?.cancel();
+                completer.complete();
+              } else {
+                debugPrint('🔄 Resume pending - keeping listener active');
+              }
               break;
 
             case TaskStatus.canceled:
@@ -312,7 +319,8 @@ class SmartDownloader {
                   '🔴 SmartDownloader: TaskStatus.notFound detected (404)');
 
               // 404 is a non-retryable error - handle immediately
-              await _handleFailedDownload(
+              // Note: 404 always returns false (no resume), but using same pattern for consistency
+              final resumePending404 = await _handleFailedDownload(
                 task: task,
                 downloader: downloader,
                 url: url,
@@ -326,10 +334,13 @@ class SmartDownloader {
                 cancelToken: cancelToken,
                 updatesStream: updatesStream,
                 onListenerCreated: onListenerCreated,
-                onTaskCreated: onTaskCreated, // ← ADD: Pass callback through
+                onTaskCreated: onTaskCreated,
               );
-              await listener?.cancel();
-              completer.complete(); // ✅ Signal completion
+
+              if (!resumePending404) {
+                await listener?.cancel();
+                completer.complete();
+              }
               break;
 
             default:
@@ -408,7 +419,11 @@ class SmartDownloader {
     }
   }
 
-  static Future<void> _handleFailedDownload({
+  /// Handles a failed download by attempting resume or retry.
+  ///
+  /// Returns `true` if resume was triggered (caller should keep listener active).
+  /// Returns `false` if giving up or starting fresh retry (caller can cleanup).
+  static Future<bool> _handleFailedDownload({
     required DownloadTask task,
     required FileDownloader downloader,
     required String url,
@@ -422,7 +437,7 @@ class SmartDownloader {
     CancelToken? cancelToken,
     Stream<dynamic>? updatesStream,
     void Function(StreamSubscription)? onListenerCreated,
-    void Function(String taskId)? onTaskCreated, // ← ADD: Callback for task ID
+    void Function(String taskId)? onTaskCreated,
   }) async {
     debugPrint('🟡 _handleFailedDownload called');
     debugPrint('🟡 httpStatusCode: $httpStatusCode');
@@ -446,7 +461,7 @@ class SmartDownloader {
         } else {
           debugPrint('⚠️ Progress already closed - cannot add error!');
         }
-        return; // Stop immediately
+        return false; // Stop immediately, no resume pending
       }
 
       if (httpStatusCode == 403) {
@@ -457,7 +472,7 @@ class SmartDownloader {
           );
           progress.close();
         }
-        return; // Stop immediately
+        return false; // Stop immediately, no resume pending
       }
 
       if (httpStatusCode == 404) {
@@ -468,7 +483,7 @@ class SmartDownloader {
           );
           progress.close();
         }
-        return; // Stop immediately
+        return false; // Stop immediately, no resume pending
       }
     }
 
@@ -482,7 +497,7 @@ class SmartDownloader {
         // Resume triggered - let event loop handle the result
         // If resume succeeds → TaskStatus.complete will fire
         // If resume fails (e.g., weak ETag) → TaskStatus.failed will fire and retry logic runs
-        return;
+        return true; // ✅ Resume pending - caller should keep listener active!
       }
     } catch (e) {
       debugPrint('⚠️ Resume failed with exception: $e');
@@ -502,10 +517,11 @@ class SmartDownloader {
           progress.addError(e);
           progress.close();
         }
-        return;
+        return false; // Cancelled, no resume pending
       }
 
-      return _downloadWithSmartRetry(
+      // Start fresh retry - new listener will be created
+      await _downloadWithSmartRetry(
         url: url,
         targetPath: targetPath,
         token: token,
@@ -516,8 +532,9 @@ class SmartDownloader {
         cancelToken: cancelToken,
         updatesStream: updatesStream,
         onListenerCreated: onListenerCreated,
-        onTaskCreated: onTaskCreated, // ← ADD: Pass callback through
+        onTaskCreated: onTaskCreated,
       );
+      return false; // Fresh retry started, no resume pending on THIS listener
     } else {
       if (!progress.isClosed) {
         progress.addError(
@@ -530,6 +547,7 @@ class SmartDownloader {
         );
         progress.close();
       }
+      return false; // Gave up, no resume pending
     }
   }
 

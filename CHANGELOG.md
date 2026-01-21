@@ -1,3 +1,40 @@
+## 0.12.2
+- **Model Deletion Fix**: Fixed model deletion not removing metadata (#169)
+- **Model Switch Fix**: Fixed model creation failure blocking switching to another model (#170)
+- **Android SDK**: Updated to API 36
+
+## 0.12.1
+- **Web Large Model Support**: `WebStorageMode` for models >2GB via OPFS streaming (#162)
+- **Desktop JAR Checksum Fix**: Fixed JAR checksum mismatch in setup scripts (#167)
+
+## 0.12.0
+- 🖥️ **Desktop Support**: Full support for macOS, Windows, and Linux platforms
+  - **macOS**: Apple Silicon (M1/M2/M3/M4) with Metal GPU acceleration
+  - **Windows**: x86_64 with DirectX 12 GPU acceleration
+  - **Linux**: x86_64 and ARM64 with Vulkan GPU acceleration
+- 🏗️ **LiteRT-LM Architecture**: Desktop uses gRPC server with bundled JRE for inference
+  - Automatic JRE 21 download and native library extraction
+  - Dynamic port allocation prevents conflicts
+  - Supports `.litertlm` model format only (MediaPipe `.task`/`.bin` not supported on desktop)
+- 📚 **Desktop Documentation**: Comprehensive setup guide in DESKTOP_SUPPORT.md
+
+## 0.11.16
+- 🐛 **iOS Embeddings Fix**: Fix crash on repeated embedding inference (#155)
+
+## 0.11.15
+- 🤖 **FunctionGemma Single-Turn Mode**: FunctionGemma now operates in single-turn mode by design (clears history after each response)
+- 🐛 **Download Resume Fix**: Fixed model download resume after interruption
+
+## 0.11.14
+- 🤖 **FunctionGemma Support**: Added `ModelType.functionGemma` for Google's specialized function calling model
+  - Pre-converted models available on HuggingFace
+  - Fine-tuning Colab notebooks (3-step pipeline)
+- 🐛 **Batch Embeddings Fix**: Fixed type cast issue in platform channel for batch embeddings (#142)
+
+## 0.11.13
+ - ✅ **iOS Embeddings Fix**: XNNPACK + SentencePiece integration for better results on iOS
+ - 🌐 **Web CDN**: Modules available via jsDelivr (`@0.11.13/web/*.js`)
+
 ## 0.11.12
  - 🌐 **Web VectorStore**: Full RAG support on web with SQLite WASM
    - Uses wa-sqlite with OPFS storage (10x faster than IndexedDB)

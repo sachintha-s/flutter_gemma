@@ -49,9 +49,14 @@ class EmbeddingModel {
         // Configure TensorFlow Lite options
         var options = Interpreter.Options()
         options.threadCount = 4 // Optimize for mobile performance
-        
+
+        // XNNPACK disabled for embeddings - causes crashes on repeated inference
+        // Speed difference is negligible (~30-80ms vs ~10-30ms with XNNPACK)
+        // See: https://github.com/DenisovAV/flutter_gemma/issues/155
+        options.isXNNPackEnabled = false
+
         // Note: Select TF Ops should be automatically available when TensorFlowLiteSelectTfOps is linked
-        
+
         // Load the model with optimized settings
         do {
             // Use optimized threading based on GPU preference
@@ -63,7 +68,7 @@ class EmbeddingModel {
 
             interpreter = try Interpreter(modelPath: modelPath, options: options)
             try interpreter?.allocateTensors()
-            
+
             // Extract dimensions from model tensors
             if let inputTensor = try? interpreter?.input(at: 0) {
                 let detectedSequenceLength = inputTensor.shape.dimensions[1]
@@ -82,7 +87,11 @@ class EmbeddingModel {
             // Optimization: Pre-tokenize task prefix once during initialization
             initializePrefixCache()
 
+        } catch let error as InterpreterError {
+            print("[MODEL] InterpreterError: \(error)")
+            throw EmbeddingError.modelLoadFailed("InterpreterError: \(error)")
         } catch {
+            print("[MODEL] Unknown error: \(error)")
             throw EmbeddingError.modelLoadFailed("Failed to load model: \(error.localizedDescription)")
         }
     }
@@ -207,32 +216,17 @@ class EmbeddingModel {
             }
         }
 
-        // Handle different output tensor shapes
-        if outputBuffer.count == embeddingDimension {
-            // Direct embedding output - return copy to avoid buffer modification
-            return Array(outputBuffer)
-        } else if outputBuffer.count > embeddingDimension {
-            // Sequence output - take mean pooling or last token
-            return meanPooling(embeddings: outputBuffer)
+        // Model returns [1, 768] - just take the 768 values directly
+        // No mean pooling - model already outputs final embedding
+        if outputBuffer.count >= embeddingDimension {
+            var result = [Float](repeating: 0.0, count: embeddingDimension)
+            for i in 0..<embeddingDimension {
+                result[i] = outputBuffer[i]
+            }
+            return result
         } else {
             throw EmbeddingError.invalidOutput("Unexpected embedding dimension: \(outputBuffer.count)")
         }
-    }
-    
-    private func meanPooling(embeddings: [Float]) -> [Float] {
-        // Apply mean pooling for sequence embeddings
-        let sequenceLength = embeddings.count / embeddingDimension
-        var pooledEmbeddings = [Float](repeating: 0.0, count: embeddingDimension)
-
-        for i in 0..<embeddingDimension {
-            var sum: Float = 0.0
-            for j in 0..<sequenceLength {
-                sum += embeddings[j * embeddingDimension + i]
-            }
-            pooledEmbeddings[i] = sum / Float(sequenceLength)
-        }
-
-        return pooledEmbeddings
     }
     
 }

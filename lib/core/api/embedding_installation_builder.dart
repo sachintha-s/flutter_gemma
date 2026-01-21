@@ -125,7 +125,7 @@ class EmbeddingInstallationBuilder {
   ///
   /// Note: This method is idempotent - calling install() on an already-installed
   /// model will skip download and just set it as active.
-  Future<EmbeddingInstallation> install() async {
+  Future<EmbeddingInstallation> install({Stream<dynamic>? updatesStream}) async {
     // Check cancellation before starting
     _cancelToken?.throwIfCancelled();
 
@@ -167,6 +167,7 @@ class EmbeddingInstallationBuilder {
           await for (final progress in modelHandler!.installWithProgress(
             _modelSource!,
             cancelToken: _cancelToken,
+            updatesStream: updatesStream,
           )) {
             _onModelProgress!(progress);
           }
@@ -188,6 +189,7 @@ class EmbeddingInstallationBuilder {
           await for (final progress in tokenizerHandler!.installWithProgress(
             _tokenizerSource!,
             cancelToken: _cancelToken,
+            updatesStream: updatesStream,
           )) {
             _onTokenizerProgress!(progress);
           }
