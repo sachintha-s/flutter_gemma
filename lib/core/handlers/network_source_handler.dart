@@ -98,6 +98,7 @@ class NetworkSourceHandler implements SourceHandler {
       maxRetries: maxDownloadRetries,
       cancelToken: cancelToken,
       updatesStream: updatesStream,
+      foreground: source.foreground,
     )) {
       yield progress;
     }

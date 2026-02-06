@@ -56,6 +56,7 @@ class MockDownloadService implements DownloadService {
     int maxRetries = 10,
     CancelToken? cancelToken,
     Stream<dynamic>? updatesStream,
+    bool? foreground,
   }) async* {
     yield 100;
   }

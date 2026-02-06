@@ -44,6 +44,7 @@ class BackgroundDownloaderService implements DownloadService {
     int maxRetries = 10,
     CancelToken? cancelToken,
     Stream<dynamic>? updatesStream,
+    bool? foreground,
   }) {
     // Delegate to SmartDownloader for all URLs
     // SmartDownloader provides HTTP-aware retry logic for ANY URL
@@ -54,6 +55,7 @@ class BackgroundDownloaderService implements DownloadService {
       maxRetries: maxRetries,
       cancelToken: cancelToken,
       updatesStream: updatesStream,
+      foreground: foreground,
     );
   }
 }

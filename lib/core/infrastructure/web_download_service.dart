@@ -84,6 +84,7 @@ class WebDownloadService implements DownloadService {
     int maxRetries = 10,
     CancelToken? cancelToken,
     Stream<dynamic>? updatesStream,
+    bool? foreground, // Ignored on web - no foreground service concept
   }) async* {
     // Check cancellation before starting
     cancelToken?.throwIfCancelled();

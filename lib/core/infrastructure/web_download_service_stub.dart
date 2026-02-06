@@ -35,6 +35,7 @@ class WebDownloadService implements DownloadService {
     int maxRetries = 10,
     CancelToken? cancelToken,
     Stream<dynamic>? updatesStream,
+    bool? foreground,
   }) {
     throw UnsupportedError(
       'WebDownloadService is only available on web platform',
